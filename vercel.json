@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "api/process-pdf/index.py": {
+      "runtime": "python3.9"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/process-pdf",
+      "destination": "/api/process-pdf/index.py"
+    }
+  ]
+}

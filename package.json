@@ -1,0 +1,17 @@
+{
+  "name": "pdf-encryption-tool",
+  "version": "1.0.0",
+  "description": "A web application for encrypting PDF files using character mapping",
+  "main": "index.html",
+  "scripts": {
+    "dev": "python -m http.server 3000",
+    "build": "echo 'No build step required'",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "PyMuPDF": "1.23.14"
+  },
+  "devDependencies": {
+    "vercel": "^32.0.0"
+  }
+}

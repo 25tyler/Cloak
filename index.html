@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Upload & Download</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>PDF Upload & Download</h1>
+        
+        <div class="upload-section">
+            <h2>Upload PDF</h2>
+            <div class="file-input-container">
+                <input type="file" id="pdfInput" accept=".pdf" />
+                <label for="pdfInput" class="file-input-label">
+                    <span class="file-input-text">Choose PDF File</span>
+                    <span class="file-input-icon">📄</span>
+                </label>
+            </div>
+            <div id="fileInfo" class="file-info"></div>
+            <div id="processingStatus" class="processing-status"></div>
+        </div>
+
+        <div class="download-section">
+            <h2>Download PDF</h2>
+            <button id="downloadBtn" class="download-btn" disabled>
+                Download PDF
+            </button>
+            <div id="downloadInfo" class="download-info"></div>
+        </div>
+
+        <div class="preview-section">
+            <h2>PDF Preview</h2>
+            <div id="previewContainer" class="preview-container">
+                <p>No PDF selected</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
