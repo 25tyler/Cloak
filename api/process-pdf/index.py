@@ -2,6 +2,11 @@ import json
 import base64
 import tempfile
 import os
+import sys
+
+# Add the current directory to Python path for Vercel
+sys.path.append(os.path.dirname(__file__))
+
 from EncTestNewTestF import process_pdf
 
 def handler(request):
