@@ -1,10 +1,15 @@
 {
-  "buildCommand": "echo 'No build step required'",
-  "outputDirectory": ".",
-  "rewrites": [
+  "version": 2,
+  "builds": [
     {
-      "source": "/api/process-pdf",
-      "destination": "/api/process-pdf/index.py"
+      "src": "api/process-pdf/index.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/process-pdf",
+      "dest": "/api/process-pdf"
     }
   ]
 }
