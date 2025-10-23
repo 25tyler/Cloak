@@ -85,23 +85,15 @@ async function handleFileUpload(event) {
         // Process the PDF
         const result = await processPdf(file);
         
-            // Show success status with ML mode information
+            // Show success status
             if (result.adversarialAttacksApplied && result.adversarialGlyphsApplied) {
-                const mlStatus = result.mlStatus ? ` (${result.mlStatus})` : '';
-                showProcessingStatus(`PDF processed successfully with both image and glyph adversarial attacks applied!${mlStatus}`, 'success');
+                showProcessingStatus('PDF processed successfully with both image and glyph adversarial attacks applied!', 'success');
             } else if (result.adversarialAttacksApplied) {
-                const mlStatus = result.mlStatus ? ` (${result.mlStatus})` : '';
-                showProcessingStatus(`PDF processed successfully with adversarial attacks applied!${mlStatus}`, 'success');
+                showProcessingStatus('PDF processed successfully with adversarial attacks applied!', 'success');
             } else if (result.adversarialGlyphsApplied) {
-                const mlStatus = result.mlStatus ? ` (${result.mlStatus})` : '';
-                showProcessingStatus(`PDF processed successfully with adversarial glyph attacks applied!${mlStatus}`, 'success');
+                showProcessingStatus('PDF processed successfully with adversarial glyph attacks applied!', 'success');
             } else {
                 showProcessingStatus('PDF processed successfully!', 'success');
-            }
-            
-            // Update system status
-            if (result.mlStatus) {
-                document.getElementById('mlStatus').textContent = result.mlStatus;
             }
         
         // Enable download button
