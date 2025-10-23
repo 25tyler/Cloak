@@ -85,12 +85,16 @@ async function handleFileUpload(event) {
         // Process the PDF
         const result = await processPdf(file);
         
-        // Show success status
-        if (result.adversarialAttacksApplied) {
-            showProcessingStatus('PDF processed successfully with adversarial attacks applied!', 'success');
-        } else {
-            showProcessingStatus('PDF processed successfully!', 'success');
-        }
+            // Show success status
+            if (result.adversarialAttacksApplied && result.adversarialGlyphsApplied) {
+                showProcessingStatus('PDF processed successfully with both image and glyph adversarial attacks applied!', 'success');
+            } else if (result.adversarialAttacksApplied) {
+                showProcessingStatus('PDF processed successfully with adversarial attacks applied!', 'success');
+            } else if (result.adversarialGlyphsApplied) {
+                showProcessingStatus('PDF processed successfully with adversarial glyph attacks applied!', 'success');
+            } else {
+                showProcessingStatus('PDF processed successfully!', 'success');
+            }
         
         // Enable download button
         downloadBtn.disabled = false;
@@ -113,8 +117,9 @@ async function processPdf(file) {
     // Convert file to base64
     const base64 = await fileToBase64(file);
     
-        // Get adversarial attacks option
+        // Get adversarial attacks options
         const applyAdversarialAttacks = document.getElementById('applyAdversarialAttacks').checked;
+        const applyAdversarialGlyphs = document.getElementById('applyAdversarialGlyphs').checked;
         
         // Send to processing endpoint
         const response = await fetch('/api/process-pdf', {
@@ -125,7 +130,8 @@ async function processPdf(file) {
             body: JSON.stringify({
                 pdfData: base64,
                 filename: file.name,
-                applyAdversarialAttacks: applyAdversarialAttacks
+                applyAdversarialAttacks: applyAdversarialAttacks,
+                applyAdversarialGlyphs: applyAdversarialGlyphs
             })
         });
     

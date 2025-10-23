@@ -347,6 +347,167 @@ class AdversarialAttackEngine:
         
         plt.show()
     
+    def create_adversarial_glyph(self, 
+                                glyph_image: Image.Image,
+                                target_label: int = None,
+                                attack_method: str = 'FGSM',
+                                **attack_params) -> Tuple[Image.Image, Dict]:
+        """
+        Create an adversarial version of a text glyph.
+        
+        Args:
+            glyph_image: PIL Image of the glyph
+            target_label: Target class for the attack (random if None)
+            attack_method: Attack method to use
+            **attack_params: Additional parameters for the attack
+            
+        Returns:
+            Tuple of (adversarial_glyph, attack_info)
+        """
+        # Convert glyph to tensor
+        glyph_tensor = self._glyph_to_tensor(glyph_image)
+        
+        # Get original prediction
+        orig_pred, orig_conf = self.predict(glyph_tensor)
+        
+        # Use random target if not specified
+        if target_label is None:
+            target_label = (orig_pred + np.random.randint(1, 100)) % 1000
+        
+        # Create adversarial example
+        adversarial_tensor, attack_info = self.create_adversarial_example(
+            glyph_tensor, target_label, attack_method, **attack_params
+        )
+        
+        # Convert back to PIL Image
+        adversarial_glyph = self._tensor_to_glyph(adversarial_tensor)
+        
+        return adversarial_glyph, attack_info
+    
+    def _glyph_to_tensor(self, glyph_image: Image.Image) -> torch.Tensor:
+        """Convert a glyph image to a tensor for adversarial attacks."""
+        # Resize glyph to standard size for OCR models
+        glyph_resized = glyph_image.resize((64, 64), Image.Resampling.LANCZOS)
+        
+        # Convert to grayscale if needed
+        if glyph_resized.mode != 'L':
+            glyph_resized = glyph_resized.convert('L')
+        
+        # Convert to numpy array
+        glyph_array = np.array(glyph_resized, dtype=np.float32)
+        
+        # Normalize to [0, 1]
+        glyph_array = glyph_array / 255.0
+        
+        # Convert to tensor and add batch and channel dimensions
+        glyph_tensor = torch.from_numpy(glyph_array).unsqueeze(0).unsqueeze(0)
+        
+        return glyph_tensor.to(self.device)
+    
+    def _tensor_to_glyph(self, tensor: torch.Tensor) -> Image.Image:
+        """Convert adversarial tensor back to glyph image."""
+        # Remove batch and channel dimensions
+        glyph_array = tensor.squeeze().cpu().numpy()
+        
+        # Denormalize
+        glyph_array = np.clip(glyph_array * 255, 0, 255).astype(np.uint8)
+        
+        # Convert to PIL Image
+        glyph_image = Image.fromarray(glyph_array, mode='L')
+        
+        return glyph_image
+    
+    def apply_adversarial_to_text(self, 
+                                 text: str,
+                                 font_path: str,
+                                 attack_method: str = 'FGSM',
+                                 **attack_params) -> List[Tuple[str, Image.Image, Dict]]:
+        """
+        Apply adversarial attacks to each character in text.
+        
+        Args:
+            text: Input text string
+            font_path: Path to font file
+            attack_method: Attack method to use
+            **attack_params: Additional parameters for the attack
+            
+        Returns:
+            List of (character, adversarial_glyph, attack_info) tuples
+        """
+        results = []
+        
+        # Load font
+        font = fitz.Font(fontfile=font_path)
+        
+        for char in text:
+            if char.isspace():
+                # Skip whitespace characters
+                results.append((char, None, None))
+                continue
+            
+            try:
+                # Create glyph image for the character
+                glyph_image = self._create_glyph_image(char, font)
+                
+                # Apply adversarial attack
+                adversarial_glyph, attack_info = self.create_adversarial_glyph(
+                    glyph_image, attack_method=attack_method, **attack_params
+                )
+                
+                results.append((char, adversarial_glyph, attack_info))
+                
+            except Exception as e:
+                print(f"Warning: Failed to create adversarial glyph for '{char}': {e}")
+                results.append((char, None, None))
+        
+        return results
+    
+    def _create_glyph_image(self, char: str, font: fitz.Font) -> Image.Image:
+        """Create a PIL Image of a character using the specified font."""
+        # Create a temporary document to render the character
+        doc = fitz.open()
+        page = doc.new_page(width=100, height=100)
+        
+        # Set font and size
+        font_size = 48
+        
+        # Insert the character
+        page.insert_text(
+            (10, 60),  # Position
+            char,
+            fontsize=font_size,
+            font=font
+        )
+        
+        # Get the character's bounding box
+        text_dict = page.get_text("dict")
+        char_rect = None
+        
+        for block in text_dict["blocks"]:
+            if block["type"] == 0:  # Text block
+                for line in block["lines"]:
+                    for span in line["spans"]:
+                        if char in span["text"]:
+                            char_rect = fitz.Rect(span["bbox"])
+                            break
+                    if char_rect:
+                        break
+                if char_rect:
+                    break
+        
+        if char_rect:
+            # Crop the page to the character
+            char_rect = char_rect.inflate(5)  # Add some padding
+            char_pixmap = page.get_pixmap(clip=char_rect)
+            char_image = Image.frombytes("RGB", [char_pixmap.width, char_pixmap.height], char_pixmap.samples)
+        else:
+            # Fallback: create a simple character image
+            char_image = Image.new('L', (64, 64), 255)
+            # This is a fallback - in practice, you'd want better glyph extraction
+        
+        doc.close()
+        return char_image
+    
     def save_results(self, results: Dict, filepath: str) -> None:
         """Save attack results to a JSON file."""
         # Convert numpy arrays to lists for JSON serialization

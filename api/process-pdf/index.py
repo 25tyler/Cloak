@@ -84,6 +84,8 @@ class handler(BaseHTTPRequestHandler):
                 
                 # Apply adversarial attacks to the processed PDF if requested
                 adversarial_attacks_applied = False
+                adversarial_glyphs_applied = False
+                
                 if body.get('applyAdversarialAttacks', False):
                     try:
                         # Import adversarial attack functionality
@@ -91,15 +93,19 @@ class handler(BaseHTTPRequestHandler):
                         sys.path.append('/Users/tyler/Cloak')
                         from adversarial_attacks import AdversarialAttackEngine
                         from adversarial_utils import ImageProcessor
+                        from ocr_model import CharacterClassifier
                         import fitz  # PyMuPDF
                         from PIL import Image
                         import io
                         
-                        # Initialize attack engine
+                        # Initialize attack engines
                         attack_engine = AdversarialAttackEngine(model_name='resnet50')
+                        ocr_classifier = CharacterClassifier()
                         
-                        # Extract images from PDF and apply adversarial attacks
+                        # Open the processed PDF
                         doc = fitz.open(output_pdf_path)
+                        
+                        # Apply adversarial attacks to images
                         for page_num in range(len(doc)):
                             page = doc[page_num]
                             # Get images from the page
@@ -140,7 +146,37 @@ class handler(BaseHTTPRequestHandler):
                                 
                                 pix = None
                         
-                        if adversarial_attacks_applied:
+                        # Apply adversarial attacks to text glyphs if requested
+                        if body.get('applyAdversarialGlyphs', False):
+                            try:
+                                for page_num in range(len(doc)):
+                                    page = doc[page_num]
+                                    
+                                    # Get all text from the page
+                                    text_dict = page.get_text("dict")
+                                    
+                                    for block in text_dict["blocks"]:
+                                        if block["type"] == 0:  # Text block
+                                            for line in block["lines"]:
+                                                for span in line["spans"]:
+                                                    text = span["text"]
+                                                    if text.strip():  # Skip empty text
+                                                        # Apply adversarial attacks to each character
+                                                        adversarial_results = attack_engine.apply_adversarial_to_text(
+                                                            text, font_path, attack_method='FGSM', epsilons=0.05
+                                                        )
+                                                        
+                                                        # Replace text with adversarial glyphs
+                                                        self._replace_text_with_adversarial_glyphs(
+                                                            page, span, adversarial_results, font_path
+                                                        )
+                                                        
+                                                        adversarial_glyphs_applied = True
+                                
+                            except Exception as glyph_error:
+                                print(f"Warning: Adversarial glyph attacks failed: {glyph_error}")
+                        
+                        if adversarial_attacks_applied or adversarial_glyphs_applied:
                             # Save the modified PDF
                             doc.save(output_pdf_path)
                         doc.close()
@@ -185,6 +221,15 @@ class handler(BaseHTTPRequestHandler):
                 response_data['message'] = 'PDF processed successfully with adversarial attacks applied'
                 response_data['adversarialAttacksApplied'] = True
             
+            if adversarial_glyphs_applied:
+                response_data['message'] = 'PDF processed successfully with adversarial glyph attacks applied'
+                response_data['adversarialGlyphsApplied'] = True
+            
+            if adversarial_attacks_applied and adversarial_glyphs_applied:
+                response_data['message'] = 'PDF processed successfully with both image and glyph adversarial attacks applied'
+                response_data['adversarialAttacksApplied'] = True
+                response_data['adversarialGlyphsApplied'] = True
+            
             response = json.dumps(response_data)
             self.wfile.write(response.encode('utf-8'))
             
@@ -210,3 +255,59 @@ class handler(BaseHTTPRequestHandler):
         
         response = json.dumps({'error': 'Method not allowed'})
         self.wfile.write(response.encode('utf-8'))
+    
+    def _replace_text_with_adversarial_glyphs(self, page, span, adversarial_results, font_path):
+        """
+        Replace text span with adversarial glyphs.
+        
+        Args:
+            page: PDF page object
+            span: Text span dictionary
+            adversarial_results: List of (character, adversarial_glyph, attack_info) tuples
+            font_path: Path to font file
+        """
+        try:
+            # Get span position and properties
+            bbox = span["bbox"]
+            font_size = span["size"]
+            font_name = span["font"]
+            
+            # Create a new text writer for this span
+            tw = fitz.TextWriter(page.rect)
+            
+            # Load font
+            font = fitz.Font(fontfile=font_path)
+            
+            # Position for first character
+            x, y = bbox[0], bbox[3]  # Start at left edge, baseline
+            
+            for i, (char, adversarial_glyph, attack_info) in enumerate(adversarial_results):
+                if adversarial_glyph is not None:
+                    # Create a temporary image from the adversarial glyph
+                    import io
+                    img_buffer = io.BytesIO()
+                    adversarial_glyph.save(img_buffer, format='PNG')
+                    img_bytes = img_buffer.getvalue()
+                    
+                    # Insert the adversarial glyph as an image
+                    img_rect = fitz.Rect(x, y - font_size, x + font_size, y)
+                    page.insert_image(img_rect, stream=img_bytes)
+                    
+                    # Move to next character position
+                    x += font_size * 0.6  # Approximate character width
+                else:
+                    # Use original character for whitespace
+                    tw.append(
+                        pos=(x, y),
+                        text=char,
+                        font=font,
+                        fontsize=font_size
+                    )
+                    x += font_size * 0.6
+            
+            # Write any remaining text
+            tw.write_text(page, overlay=True)
+            
+        except Exception as e:
+            print(f"Warning: Failed to replace text with adversarial glyphs: {e}")
+            # Fallback: keep original text
