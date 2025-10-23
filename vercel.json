@@ -1,15 +1,9 @@
 {
-  "version": 2,
-  "builds": [
+  "outputDirectory": ".",
+  "rewrites": [
     {
-      "src": "api/process-pdf/index.py",
-      "use": "@vercel/python"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/process-pdf",
-      "dest": "/api/process-pdf"
+      "source": "/api/process-pdf",
+      "destination": "/api/process-pdf"
     }
   ]
 }

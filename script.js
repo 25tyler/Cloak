@@ -34,6 +34,7 @@ if (downloadBtn) {
     console.error('Download button element not found!');
 }
 
+
 /**
  * Handles file upload when user selects a PDF file
  * This function is called when the file input changes
@@ -82,10 +83,14 @@ async function handleFileUpload(event) {
     
     try {
         // Process the PDF
-        await processPdf(file);
+        const result = await processPdf(file);
         
         // Show success status
-        showProcessingStatus('PDF processed successfully!', 'success');
+        if (result.adversarialAttacksApplied) {
+            showProcessingStatus('PDF processed successfully with adversarial attacks applied!', 'success');
+        } else {
+            showProcessingStatus('PDF processed successfully!', 'success');
+        }
         
         // Enable download button
         downloadBtn.disabled = false;
@@ -108,17 +113,21 @@ async function processPdf(file) {
     // Convert file to base64
     const base64 = await fileToBase64(file);
     
-    // Send to processing endpoint
-    const response = await fetch('/api/process-pdf', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            pdfData: base64,
-            filename: file.name
-        })
-    });
+        // Get adversarial attacks option
+        const applyAdversarialAttacks = document.getElementById('applyAdversarialAttacks').checked;
+        
+        // Send to processing endpoint
+        const response = await fetch('/api/process-pdf', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                pdfData: base64,
+                filename: file.name,
+                applyAdversarialAttacks: applyAdversarialAttacks
+            })
+        });
     
     if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -132,6 +141,9 @@ async function processPdf(file) {
     
     // Store the processed PDF data
     processedPdfData = result.processedPdf;
+    
+    // Return the result for status checking
+    return result;
 }
 
 /**
@@ -401,4 +413,5 @@ function handleDrop(e) {
         }
     }
 }
+
 
