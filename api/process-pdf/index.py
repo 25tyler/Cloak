@@ -88,38 +88,35 @@ class handler(BaseHTTPRequestHandler):
                 
                 if body.get('applyAdversarialAttacks', False) or body.get('applyAdversarialGlyphs', False):
                     try:
-                        # Import ML dependencies - if they fail, the whole request fails
+                        # Import GPT-based adversarial attack system
                         import sys
                         import os
                         # Add the project root directory to Python path
                         project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
                         sys.path.append(project_root)
-                        from adversarial_attacks import AdversarialAttackEngine
-                        from adversarial_utils import ImageProcessor
-                        from ocr_model import CharacterClassifier
+                        from gpt_adversarial import GPTAdversarialAttacker
                         import fitz  # PyMuPDF
                         from PIL import Image
                         import io
                     except ImportError as e:
-                        # If ML dependencies are not available, return an error
+                        # If dependencies are not available, return an error
                         response = json.dumps({
                             'success': False,
-                            'error': f'Adversarial attacks requested but ML dependencies not available: {str(e)}. Please ensure PyTorch and other ML libraries are installed.'
+                            'error': f'Adversarial attacks requested but dependencies not available: {str(e)}. Please ensure OpenAI API key is set.'
                         })
                         self.wfile.write(response.encode('utf-8'))
                         return
                     
-                    print("🚀 Initializing full ML adversarial attack engines...")
-                    # Initialize attack engines
-                    attack_engine = AdversarialAttackEngine(model_name='resnet50')
-                    ocr_classifier = CharacterClassifier()
+                    print("🚀 Initializing GPT Vision adversarial attack system...")
+                    # Initialize GPT-based attacker
+                    gpt_attacker = GPTAdversarialAttacker()
                     
                     # Open the processed PDF
                     doc = fitz.open(output_pdf_path)
                     
-                    # Apply adversarial attacks to images
+                    # Apply adversarial attacks to images using GPT Vision
                     if body.get('applyAdversarialAttacks', False):
-                        print("🖼️ Applying advanced adversarial attacks to images...")
+                        print("🖼️ Applying GPT Vision adversarial attacks to images...")
                         for page_num in range(len(doc)):
                             page = doc[page_num]
                             # Get images from the page
@@ -135,34 +132,29 @@ class handler(BaseHTTPRequestHandler):
                                     img_data = pix.tobytes("png")
                                     pil_image = Image.open(io.BytesIO(img_data))
                                     
-                                    # Convert to tensor and apply adversarial attack
-                                    image_tensor = attack_engine.load_image_from_pil(pil_image)
-                                    orig_pred, _ = attack_engine.predict(image_tensor)
-                                    
-                                    # Create adversarial example
-                                    adversarial_image, attack_info = attack_engine.create_adversarial_example(
-                                        image_tensor, orig_pred, attack_method='FGSM', epsilons=0.1
+                                    # Apply GPT-based adversarial attack to image
+                                    adversarial_image, attack_info = gpt_attacker.create_adversarial_glyph(
+                                        pil_image, max_iterations=20, max_pixel_changes=50
                                     )
-                                    
-                                    # Convert back to PIL and replace in PDF
-                                    adv_pil = ImageProcessor.tensor_to_pil(adversarial_image)
                                     
                                     # Convert back to bytes
                                     img_buffer = io.BytesIO()
-                                    adv_pil.save(img_buffer, format='PNG')
+                                    adversarial_image.save(img_buffer, format='PNG')
                                     img_bytes = img_buffer.getvalue()
                                     
                                     # Replace image in PDF
-                                    new_pix = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, adv_pil.width, adv_pil.height), img_bytes)
+                                    new_pix = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, adversarial_image.width, adversarial_image.height), img_bytes)
                                     page.replace_image(xref, pixmap=new_pix)
                                     
                                     adversarial_attacks_applied = True
+                                    
+                                    print(f"✅ Applied GPT adversarial attack to image {img_index + 1}")
                                 
                                 pix = None
                     
-                    # Apply adversarial attacks to text glyphs if requested
+                    # Apply adversarial attacks to text glyphs using GPT Vision
                     if body.get('applyAdversarialGlyphs', False):
-                        print("🔤 Applying advanced adversarial attacks to text glyphs...")
+                        print("🔤 Applying GPT Vision adversarial attacks to text glyphs...")
                         for page_num in range(len(doc)):
                             page = doc[page_num]
                             
@@ -175,9 +167,11 @@ class handler(BaseHTTPRequestHandler):
                                         for span in line["spans"]:
                                             text = span["text"]
                                             if text.strip():  # Skip empty text
-                                                # Apply adversarial attacks to each character
-                                                adversarial_results = attack_engine.apply_adversarial_to_text(
-                                                    text, font_path, attack_method='FGSM', epsilons=0.05
+                                                print(f"🔤 Processing text: '{text}'")
+                                                
+                                                # Apply GPT-based adversarial attacks to each character
+                                                adversarial_results = gpt_attacker.apply_adversarial_to_text(
+                                                    text, font_path, max_iterations=15, max_pixel_changes=30
                                                 )
                                                 
                                                 # Replace text with adversarial glyphs
@@ -186,10 +180,13 @@ class handler(BaseHTTPRequestHandler):
                                                 )
                                                 
                                                 adversarial_glyphs_applied = True
+                                                
+                                                print(f"✅ Applied GPT adversarial attacks to text: '{text}'")
                     
                     if adversarial_attacks_applied or adversarial_glyphs_applied:
                         # Save the modified PDF
                         doc.save(output_pdf_path)
+                        print("💾 Saved PDF with GPT adversarial attacks")
                     doc.close()
                 
             except Exception as e:
