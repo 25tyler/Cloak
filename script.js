@@ -18,6 +18,16 @@ console.log('Download Button element:', downloadBtn);
 console.log('Download Info element:', downloadInfo);
 console.log('Preview Container element:', previewContainer);
 
+// Debug file input specifically
+if (pdfInput) {
+    console.log('PDF Input found:', pdfInput);
+    console.log('PDF Input type:', pdfInput.type);
+    console.log('PDF Input accept:', pdfInput.accept);
+    console.log('PDF Input disabled:', pdfInput.disabled);
+} else {
+    console.error('PDF Input element not found!');
+}
+
 // Event listener for file input change
 if (pdfInput) {
     pdfInput.addEventListener('change', handleFileUpload);
