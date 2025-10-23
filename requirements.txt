@@ -1,8 +1,4 @@
 PyMuPDF==1.23.14
 reportlab==4.0.4
-foolbox==3.3.1
-torch==2.2.0
-torchvision==0.17.0
 Pillow==10.0.0
-matplotlib==3.7.2
 numpy==1.24.3
