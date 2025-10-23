@@ -139,11 +139,11 @@ async function processPdf(file) {
         throw new Error(`HTTP error! status: ${response.status}`);
     }
     
-    const result = await response.json();
-    
-    if (!result.success) {
-        throw new Error('Failed to process PDF');
-    }
+        const result = await response.json();
+
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to process PDF');
+        }
     
     // Store the processed PDF data
     processedPdfData = result.processedPdf;

@@ -87,15 +87,24 @@ class handler(BaseHTTPRequestHandler):
                 adversarial_glyphs_applied = False
                 
                 if body.get('applyAdversarialAttacks', False) or body.get('applyAdversarialGlyphs', False):
-                    # Import ML dependencies - if they fail, the whole request fails
-                    import sys
-                    sys.path.append('/Users/tyler/Cloak')
-                    from adversarial_attacks import AdversarialAttackEngine
-                    from adversarial_utils import ImageProcessor
-                    from ocr_model import CharacterClassifier
-                    import fitz  # PyMuPDF
-                    from PIL import Image
-                    import io
+                    try:
+                        # Import ML dependencies - if they fail, the whole request fails
+                        import sys
+                        sys.path.append('/Users/tyler/Cloak')
+                        from adversarial_attacks import AdversarialAttackEngine
+                        from adversarial_utils import ImageProcessor
+                        from ocr_model import CharacterClassifier
+                        import fitz  # PyMuPDF
+                        from PIL import Image
+                        import io
+                    except ImportError as e:
+                        # If ML dependencies are not available, return an error
+                        response = json.dumps({
+                            'success': False,
+                            'error': f'Adversarial attacks requested but ML dependencies not available: {str(e)}. Please ensure PyTorch and other ML libraries are installed.'
+                        })
+                        self.wfile.write(response.encode('utf-8'))
+                        return
                     
                     print("🚀 Initializing full ML adversarial attack engines...")
                     # Initialize attack engines
