@@ -78,6 +78,26 @@ h2 {
     font-style: italic;
 }
 
+/* System Status */
+.system-status {
+    margin-top: 15px;
+    padding: 10px;
+    background: #f0f8ff;
+    border-radius: 6px;
+    border: 1px solid #d0e7ff;
+    font-size: 0.9rem;
+}
+
+.system-status p {
+    margin: 0;
+    color: #333;
+}
+
+#mlStatus {
+    font-weight: 500;
+    color: #0066cc;
+}
+
 .config-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));

@@ -100,8 +100,9 @@ class handler(BaseHTTPRequestHandler):
                             from adversarial_utils import ImageProcessor
                             from ocr_model import CharacterClassifier
                             ml_available = True
-                        except ImportError:
-                            print("ML dependencies not available, using fallback methods")
+                            print("✅ ML dependencies available - using full adversarial attack capabilities")
+                        except ImportError as e:
+                            print(f"⚠️ ML dependencies not available ({e}) - using fallback methods")
                             ml_available = False
                         
                         import fitz  # PyMuPDF
@@ -112,12 +113,14 @@ class handler(BaseHTTPRequestHandler):
                         doc = fitz.open(output_pdf_path)
                         
                         if ml_available:
+                            print("🚀 Initializing full ML adversarial attack engines...")
                             # Initialize attack engines
                             attack_engine = AdversarialAttackEngine(model_name='resnet50')
                             ocr_classifier = CharacterClassifier()
                             
                             # Apply adversarial attacks to images
                             if body.get('applyAdversarialAttacks', False):
+                                print("🖼️ Applying advanced adversarial attacks to images...")
                                 for page_num in range(len(doc)):
                                     page = doc[page_num]
                                     # Get images from the page
@@ -160,6 +163,7 @@ class handler(BaseHTTPRequestHandler):
                             
                             # Apply adversarial attacks to text glyphs if requested
                             if body.get('applyAdversarialGlyphs', False):
+                                print("🔤 Applying advanced adversarial attacks to text glyphs...")
                                 try:
                                     for page_num in range(len(doc)):
                                         page = doc[page_num]
@@ -188,8 +192,10 @@ class handler(BaseHTTPRequestHandler):
                                 except Exception as glyph_error:
                                     print(f"Warning: Adversarial glyph attacks failed: {glyph_error}")
                         else:
+                            print("🔄 Using fallback methods (ML dependencies not available)")
                             # Fallback: Apply simple image modifications for demonstration
                             if body.get('applyAdversarialAttacks', False):
+                                print("🖼️ Applying simple noise to images (fallback mode)...")
                                 for page_num in range(len(doc)):
                                     page = doc[page_num]
                                     image_list = page.get_images()
@@ -224,7 +230,7 @@ class handler(BaseHTTPRequestHandler):
                             
                             # Fallback: Apply simple text modifications for demonstration
                             if body.get('applyAdversarialGlyphs', False):
-                                print("Adversarial glyph attacks requested but ML dependencies not available")
+                                print("🔤 Glyph attacks requested but using fallback mode (ML not available)")
                                 adversarial_glyphs_applied = True  # Mark as applied for demo purposes
                         
                         if adversarial_attacks_applied or adversarial_glyphs_applied:
@@ -268,18 +274,22 @@ class handler(BaseHTTPRequestHandler):
                 'message': 'PDF processed successfully'
             }
             
-            if adversarial_attacks_applied:
-                response_data['message'] = 'PDF processed successfully with adversarial attacks applied'
-                response_data['adversarialAttacksApplied'] = True
-            
-            if adversarial_glyphs_applied:
-                response_data['message'] = 'PDF processed successfully with adversarial glyph attacks applied'
-                response_data['adversarialGlyphsApplied'] = True
-            
-            if adversarial_attacks_applied and adversarial_glyphs_applied:
-                response_data['message'] = 'PDF processed successfully with both image and glyph adversarial attacks applied'
-                response_data['adversarialAttacksApplied'] = True
-                response_data['adversarialGlyphsApplied'] = True
+            # Add status information about which mode was used
+            if adversarial_attacks_applied or adversarial_glyphs_applied:
+                # Check if ML was available (this would be set in the processing logic)
+                ml_status = "ML capabilities available" if 'ml_available' in locals() and ml_available else "Fallback mode (ML not available)"
+                response_data['mlStatus'] = ml_status
+                
+                if adversarial_attacks_applied and adversarial_glyphs_applied:
+                    response_data['message'] = f'PDF processed successfully with both image and glyph adversarial attacks applied ({ml_status})'
+                    response_data['adversarialAttacksApplied'] = True
+                    response_data['adversarialGlyphsApplied'] = True
+                elif adversarial_attacks_applied:
+                    response_data['message'] = f'PDF processed successfully with adversarial attacks applied ({ml_status})'
+                    response_data['adversarialAttacksApplied'] = True
+                elif adversarial_glyphs_applied:
+                    response_data['message'] = f'PDF processed successfully with adversarial glyph attacks applied ({ml_status})'
+                    response_data['adversarialGlyphsApplied'] = True
             
             response = json.dumps(response_data)
             self.wfile.write(response.encode('utf-8'))
